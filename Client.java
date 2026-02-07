@@ -8,25 +8,43 @@ import java.net.UnknownHostException;
 
 public class Client {
     
-    public void run() throws UnknownHostException, IOException{
-        int port = 8010;
-        InetAddress address = InetAddress.getByName("localhost");
-        Socket socket = new Socket(address, port);
-        PrintWriter toSocket = new PrintWriter(socket.getOutputStream(), true);
-        BufferedReader fromSocket = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        toSocket.println("Hello World from socket "+socket.getLocalSocketAddress());
-        String line = fromSocket.readLine();
-        toSocket.close();
-        fromSocket.close();
-        socket.close();
+    public Runnable getRunnable() throws UnknownHostException, IOException {
+        return new Runnable() {
+            @Override
+            public void run() {
+                int port = 8010;
+                try {
+                    InetAddress address = InetAddress.getByName("localhost");
+                    Socket socket = new Socket(address, port);
+                    try (
+                        PrintWriter toSocket = new PrintWriter(socket.getOutputStream(), true);
+                        BufferedReader fromSocket = new BufferedReader(new InputStreamReader(socket.getInputStream()))
+                    ) {
+                        toSocket.println("Hello from Client " + socket.getLocalSocketAddress());
+                        String line = fromSocket.readLine();
+                        System.out.println("Response from Server " + line);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    // The socket will be closed automatically when leaving the try-with-resources block
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                
+            }
+        };
     }
     
-    public static void main(String[] args) {
-        Client singleThreadedWebServer_Client = new Client();
-        try{
-            singleThreadedWebServer_Client.run();
-        } catch(Exception ex){
-            ex.printStackTrace();
+    public static void main(String[] args){
+        Client client = new Client();
+        for(int i=0; i<100; i++){
+            try{
+                Thread thread = new Thread(client.getRunnable());
+                thread.start();
+            }catch(Exception ex){
+                return;
+            }
         }
+        return;
     }
 }
